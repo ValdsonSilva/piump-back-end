@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid())
+  name             String
+  email            String   
+  password         String   @unique
+  phone            String
+  address          String
+  zip              String
+  userType         UserType @default(CLIENT)
+  stripeCustomerId String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  bookings Booking[]
+}
+
+enum UserType {
+  ADMIN
+  CLIENT
+}
+
+model Booking {
+  id                   String   @id @default(cuid())
+  bookingCode          String   @unique
+  userId               String?
+  user                 User?     @relation(fields: [userId], references: [id])
+  bins                 Int
+  plan                 Plan
+  ampm                 AMPM
+  sameDay              Boolean  @default(false)
+  assignedDate         DateTime
+  status               BookingStatus @default(PENDING)
+  stripeSubscriptionId String?  @unique
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([assignedDate, status])
+  @@index([userId])
+}
+
+model ZipWhitelist {
+  zip       String  @id
+  city      String?
+  state     String?
+  active    Boolean @default(true)
+  createdAt DateTime @default(now())
+}
+
+enum Plan { 
+  clean 
+  family 
+  fresh 
+  custom
+}
+
+enum AMPM { 
+  AM 
+  PM 
+}
+
+enum BookingStatus { 
+  PENDING 
+  SCHEDULED 
+  CANCELED 
+}
