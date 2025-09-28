@@ -3,7 +3,7 @@ import { stripe, createPortalSession } from '../services/stripe.js';
 
 export const portalRouter = Router();
 
-portalRouter.post('/', async (req, res) => {
+portalRouter.post('/', async (req: Request, res: Response) => {
     if (!stripe) return res.status(503).json({ error: 'Stripe não configurado' });
     const { email, customerId } = req.body as { email?: string; customerId?: string };
     try {

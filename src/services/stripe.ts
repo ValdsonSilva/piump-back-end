@@ -8,10 +8,10 @@ export const stripe = env.STRIPE_SECRET
 
 
 export const planToPriceId: Record<PlanKey, string> = {
-    clean: env.STRIPE_PRICE_CLEAN,
-    family: env.STRIPE_PRICE_FAMILY,
-    fresh: env.STRIPE_PRICE_FRESH,
-    custom: env.STRIPE_PRICE_CUSTOM
+    clean: env.STRIPE_PRICE_CLEAN!,
+    family: env.STRIPE_PRICE_FAMILY!,
+    fresh: env.STRIPE_PRICE_FRESH!,
+    custom: env.STRIPE_PRICE_CUSTOM!
 };
 
 function ensureStripeReady(plan: PlanKey) {
@@ -35,7 +35,7 @@ export async function createCheckoutSession(bookingId: string, input: BookingInp
     // Add one-time bin surcharge (first invoice only) if more than 1 bin
     const session = await stripe?.checkout.sessions.create({
         mode: 'subscription',
-        customer_email: input.email,
+        // customer_email: input.email,
         allow_promotion_codes: true,
         billing_address_collection: 'auto',
         success_url: `${env.FRONTEND_URL}/success?booking_id=${bookingId}`,

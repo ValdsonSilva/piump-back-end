@@ -3,7 +3,7 @@ import type Stripe from 'stripe';
 import { stripe } from '../services/stripe.js';
 import { env } from '../env.js';
 import { markScheduled } from '../repositories/bookinRepo.js';
-import { sendEmail } from '../services/notifications.js';
+// import { sendEmail } from '../services/notifications.js';
 
 
 export const webhooksRouter = Router();
@@ -13,7 +13,10 @@ webhooksRouter.post('/stripe', (req, res) => {
     let event: Stripe.Event;
 
     try {
-        event = stripe?.webhooks.constructEvent((req as any).rawBody, sig, env.STRIPE_WEBHOOK_SECRET);
+        if (!stripe) {
+            return res.status(500).send('Stripe service not initialized');
+        }
+        event = stripe.webhooks.constructEvent((req as any).rawBody, sig, env.STRIPE_WEBHOOK_SECRET!);
     } catch (err: any) {
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }

@@ -6,7 +6,7 @@ import { env } from "../env";
 export interface AuthPayload { sub: string, password: string, type: UserType }
 
 export function signToken(payload: AuthPayload) {
-    return jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
+    return jwt.sign(payload, env.JWT_SECRET, { expiresIn: Number(env.JWT_EXPIRES_IN) });
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {

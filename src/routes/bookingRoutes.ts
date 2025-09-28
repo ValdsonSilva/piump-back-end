@@ -3,8 +3,7 @@ import { bookingSchema } from '../lib/validation.js';
 import { ALLOWED_ZIPS } from '../env.js';
 import { buildBookingRow } from '../services/bookingService.js';
 import { createBookingDB, listAllBookings } from '../repositories/bookinRepo.js';
-import { createCheckoutSession } from '../services/stripe.js';
-import { requireAuth, requireUserType } from '../middleware/auth.js';                                                                          
+import { requireAuth } from '../middleware/auth.js';
 import { findByUserId } from '../repositories/userRepo.js';
 
 
@@ -23,7 +22,7 @@ bookingsRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     const isUserExist = await findByUserId(parsed.userId);
 
     if (!isUserExist) {
-      return res.status(404).json({message: 'User not found'});
+      return res.status(404).json({ message: 'User not found' });
     }
 
     const row = buildBookingRow(parsed);
@@ -50,11 +49,11 @@ bookingsRouter.post('/', requireAuth, async (req: Request, res: Response) => {
 
 bookingsRouter.get('/', async (req: Request, res: Response) => {
   try {
-      const bookings = await listAllBookings();
-      
-      if (!bookings) return res.status(400).json({message: "Bookings not found."});
+    const bookings = await listAllBookings();
 
-      return res.json(bookings);
+    if (!bookings) return res.status(400).json({ message: "Bookings not found." });
+
+    return res.json(bookings);
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
   }
