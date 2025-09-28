@@ -1,29 +1,35 @@
 import { PrismaClient } from "@prisma/client";
 import { DateTime } from 'luxon';
 import type { BookingInput } from '../types/booking.js';
+import { findByUserId } from "./userRepo.js";
 
 const prisma = new PrismaClient();
 
-export async function createUserIfNotExistis(input: BookingInput) {
-  const found = await prisma.user.findUnique({ where: { email: input.email } });
-  if (found) return found;
-  return prisma.user.create({
-    data: {
-      name: input.name,
-      email: input.email,
-      phone: input.phone,
-      address: input.address,
-      zip: input.zip
-    }
-  });
-}
+// export async function createUserIfNotExistis(input: BookingInput) {
+//   const found = await prisma.user.findUnique({ where: { email: input.email } });
+//   if (found) return found;
+//   return prisma.user.create({
+//     data: {
+//       name: input.name,
+//       email: input.email,
+//       password: inpu
+//       phone: input.phone,
+//       address: input.address,
+//       zip: input.zip
+//     }
+//   });
+// }
+
+
 
 export async function createBookingDB(bookingId: string, input: BookingInput, assignedDateISO: string) {
-  const user = await createUserIfNotExistis(input);
+
+  // const user = await findByUserId(input.userId)
+
   return prisma.booking.create({
     data: {
       bookingCode: bookingId,
-      userId: user.id,
+      userId: input.userId,
       bins: input.bins,
       plan: input.plan as any,
       ampm: input.ampm as any,
@@ -32,6 +38,10 @@ export async function createBookingDB(bookingId: string, input: BookingInput, as
       status: 'PENDING'
     }
   });
+}
+
+export async function listAllBookings() {
+  return prisma.booking.findMany();
 }
 
 // export async function updateBookingAfterCheckout( bookingCode: string, subscriptionId: string , stripeCustomerId?: string) {
@@ -72,6 +82,6 @@ export async function groupScheduledByZip(dateISO: string) {
     groups[zip] = groups[zip] || [];
     groups[zip].push(r.bookingCode);
   }
-  
+
   return groups;
 }

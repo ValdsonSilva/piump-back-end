@@ -2,11 +2,8 @@
 export type PlanKey = "clean" | "family" | "fresh" | "custom";
 
 export interface BookingInput {
-    name: string;   
-    email: string;
-    phone: string;
-    address: string;
-    zip: string;
+    userId: string;  
+    zip: string,
     bins: number;
     plan: PlanKey;
     ampm: "AM" | "PM";

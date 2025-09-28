@@ -14,7 +14,6 @@ import { bookingsRouter } from './routes/bookingRoutes.js';
 const app = express();
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
-
 // Stripe webhooks need raw body
 app.post('/webhooks/stripe', express.raw({ type: 'application/json' }),
     (req: Request, res: Response, next) => {
@@ -27,7 +26,6 @@ app.use(helmet());
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(pinoHttp({ logger }));
 app.use(express.json());
-
 
 // Routes
 app.get('/', (_req, res) => res.json({
@@ -45,7 +43,12 @@ app.use('/api/bookings', bookingsRouter);
 app.use('/api/portal', portalRouter);
 app.use('/api/users', usersRouter);
 
-app.listen(Number(env.PORT), () => {
-    logger.info(`Server running on :${env.PORT}`);
-    startCronJobs();
+// app.listen(Number(env.PORT), () => {
+//     logger.info(`Server running on :${env.PORT}`);
+//     startCronJobs();
+// });
+
+app.listen(Number(env.PORT), '0.0.0.0', () => {
+  logger.info(`Server running on :${env.PORT}`);
+  startCronJobs();
 });

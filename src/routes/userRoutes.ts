@@ -1,7 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { groupScheduledByZip } from '../repositories/bookinRepo.js';
 import z, { date } from 'zod';
-import { changePassword, createUser, findUserById, listUsers, updateUser } from '../repositories/userRepo.js';
+import { changePassword, createUser, findByUserEmail, listUsers, updateUser } from '../repositories/userRepo.js';
 import { requireAuth, requireUserType, signToken } from '../middleware/auth.js';
 import bcrypt from 'bcryptjs';
 
@@ -37,7 +37,7 @@ usersRouter.post('/register', async (req: Request, res: Response) => {
   try {
     const data = registerSchema.parse(req.body);
 
-    const exists = await findUserById(data.email);
+    const exists = await findByUserEmail(data.email);
 
     if (exists) return res.status(409).json({ error: 'Email already in use' });
 
@@ -57,13 +57,15 @@ usersRouter.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
 
-    const user = await findUserById(email);
+    const user = await findByUserEmail(email);
 
-    if (!user || !user.password) return res.status(401).json({ error: 'Invalid credentials' });
+    console.log('Usuário logado:', user)
+
+    if (!user || !user.password) return res.status(401).json({ error: 'Invalid credentials 1' });
 
     const ok = await bcrypt.compare(password, user.password);
 
-    if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!ok) return res.status(401).json({ error: 'Invalid credentials 2' });
 
     const token = signToken({ sub: user.id, password: user.password, type: user.userType });
 
@@ -99,7 +101,7 @@ usersRouter.put('/me/password', requireAuth, async (req: Request, res: Response)
 
     const auth = (req as any).auth;
 
-    const user = await findUserById(auth.email);
+    const user = await findByUserEmail(auth.email);
 
     if (!user || !user.password) return res.status(401).json({ error: 'Invalid credentials' });
 

@@ -2,7 +2,11 @@ import { UserType } from "@prisma/client";
 import { prisma } from "../services/db.js";
 import bcrypt from 'bcryptjs';
 
-export function findUserById(id: string) {
+export function findByUserEmail(email: string) {
+    return prisma.user.findUnique({ where: { email } });
+}
+
+export function findByUserId(id: string) {
     return prisma.user.findUnique({ where: { id } });
 }
 

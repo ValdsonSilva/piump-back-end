@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { planToPriceId } from '../services/stripe.js';
+import { requireAuth } from '../middleware/auth.js';
 
 export const plansRouter = Router();
 
-plansRouter.get('/', (_req, res) => {
+plansRouter.get('/', requireAuth, (_req, res) => {
     res.json({
         plans: [
             {
