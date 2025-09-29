@@ -1,7 +1,7 @@
 import { UserType } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";
 import jwt from 'jsonwebtoken';
-import { env } from "../env";
+import { env } from "../env.js";
 
 export interface AuthPayload { sub: string, password: string, type: UserType }
 
@@ -21,7 +21,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
         (req as any).auth = decode;
         next();
     } catch {
-        return res.status(500).json({ error: "Ivalid token" });
+        return res.status(500).json({ error: "Invalid token" });
     }
 }
 
