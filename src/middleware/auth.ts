@@ -1,12 +1,18 @@
 import { UserType } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { env } from "../env.js";
 
-export interface AuthPayload { sub: string, password: string, type: UserType }
+export interface AuthPayload { sub: string, type: UserType }
+
+// const expiresIn = (process.env.JWT_EXPIRES_IN || "7d") as unknown as string | number;
+const expiresIn = 3600
 
 export function signToken(payload: AuthPayload) {
-    return jwt.sign(payload, env.JWT_SECRET, { expiresIn: 7 });
+
+    const opts: SignOptions = { expiresIn, algorithm: "HS256" };
+
+    return jwt.sign(payload, env.JWT_SECRET, opts);
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {

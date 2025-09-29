@@ -43,7 +43,7 @@ usersRouter.post('/register', async (req: Request, res: Response) => {
 
     const user = await createUser(data);
 
-    const token = signToken({ sub: user.id, password: user.password, type: user.userType });
+    const token = signToken({ sub: user.id, type: user.userType });
 
     res.status(201).json({ user: { id: user.id, name: user.name, email: user.email, type: user.userType }, token });
 
@@ -67,7 +67,7 @@ usersRouter.post('/login', async (req: Request, res: Response) => {
 
     if (!ok) return res.status(401).json({ error: 'Invalid credentials 2' });
 
-    const token = signToken({ sub: user.id, password: user.password, type: user.userType });
+    const token = signToken({ sub: user.id, type: user.userType });
 
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, userType: user.userType } });
   } catch (e: any) {

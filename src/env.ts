@@ -13,7 +13,7 @@ const envSchema = z.object({
     ADMIN_BASIC_PASS: z.string().optional(),
     ALLOWED_ZIPS: z.string().optional().default(''),
     JWT_SECRET: z.string().default('dev-secret-change-me'),
-    JWT_EXPIRES_IN: z.number().default(7),
+    JWT_EXPIRES_IN: z.union([z.string().min(1), z.coerce.number()]).default("7d"),
 
     // DB (Neon)
     DATABASE_URL: z.string().min(1, { message: 'DATABASE_URL (Neon) é obrigatório' }),
