@@ -1,4 +1,4 @@
-# Trash Bin & Entry Care – Backend
+# Piump-Back-End
 
 Minimal Node+TS+Express backend for booking + Stripe subscriptions + Google
 Sheets + basic admin.
