@@ -1,9 +1,9 @@
-import { UserType } from "@prisma/client";
+import { AccountType } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { env } from "../env.js";
 
-export interface AuthPayload { sub: string, type: UserType }
+export interface AuthPayload { sub: string, type: AccountType }
 
 // const expiresIn = (process.env.JWT_EXPIRES_IN || "7d") as unknown as string | number;
 const expiresIn = 3600
@@ -31,7 +31,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     }
 }
 
-export function requireUserType(...types: UserType[]) {
+export function requireUserAccountType(...types: AccountType[]) {
     return (req: Request, res: Response, next: NextFunction) => {
         const auth = (req as any).auth as AuthPayload | undefined;
         if (!auth) return res.status(401).json({ error: 'Unauthenticated' });

@@ -1,4 +1,4 @@
-import { UserType } from "@prisma/client";
+import { AccountType } from "@prisma/client";
 import { prisma } from "../services/db.js";
 import bcrypt from 'bcryptjs';
 
@@ -10,14 +10,14 @@ export function findByUserId(id: string) {
     return prisma.user.findUnique({ where: { id } });
 }
 
-export async function createUser(data: { name: string; email: string; password: string; phone: string; address: string; zip: string; userType?: UserType }) {
+export async function createUser(data: { name: string; email: string; password: string; phone: string; address: string; zip: string; accountType?: AccountType }) {
     const hashed = await bcrypt.hash(data.password, 10);
     return prisma.user.create({
-        data: { name: data.name, email: data.email, password: hashed, phone: data.phone, address: data.address, zip: data.zip, userType: data.userType ?? UserType['CLIENT'] }
+        data: { name: data.name, email: data.email, password: hashed, phone: data.phone, address: data.address, zip: data.zip, accountType: data.accountType ?? AccountType['INDIVIDUAL'] }
     });
 }
 
-export async function updateUser(id: string, data: Partial<{ name: string; phone: string; address: string; zip: string; type: UserType }>) {
+export async function updateUser(id: string, data: Partial<{ name: string; phone: string; address: string; zip: string; accountType: AccountType}>) {
     return prisma.user.update({ where: { id }, data });
 }
 

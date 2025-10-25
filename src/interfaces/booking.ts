@@ -2,18 +2,18 @@
 export type PlanKey = "clean" | "family" | "fresh" | "custom";
 
 export interface BookingInput {
-    userId: string;  
+    userId: string;
     zip: string,
-    bins: number;
+    bins?: number;
     plan: PlanKey;
     ampm: "AM" | "PM";
     sameDay: boolean;
+    assignedDate: string; // ISO date yyyy-mm-dd
 }
 
 export interface BookingRow extends BookingInput {
     bookingId: string;
-    assignedDate: string; // ISO date yyyy-mm-dd
-    status: "pending" | "scheduled" | "cancelled";
+    status: "pending" | "scheduled" | "cancelled" | "done";
     stripeCustomerId?: string;
     stripeSubscriptionId?: string;
 }

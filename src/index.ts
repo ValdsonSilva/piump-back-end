@@ -6,10 +6,14 @@ import pinoHttp from 'pino-http';
 import { env } from './env.js';
 import { plansRouter } from './routes/plansRoutes.js';
 import { portalRouter } from './routes/portalRoutes.js';
-import { usersRouter } from './routes/userRoutes.js';
+// import { usersRouter } from './routes/userRoutes.js';
 import { webhooksRouter } from './routes/webhooksRoutes.js';
-import { startCronJobs } from './services/scheduler.js';
-import { bookingsRouter } from './routes/bookingRoutes.js';
+// import { startCronJobs } from './services/scheduler.js';
+// import { bookingsRouter } from './routes/bookingRoutes.js';
+import businessClientRouter from './routes/businessClientRoutes.js';
+import providerRouter from './routes/providerRoutes.js';
+import serviceCategoryRouter from './routes/serviceCategoryRoutes.js';
+import zipListRouter from './routes/zipListRoutes.js';
 
 const app = express();
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
@@ -39,16 +43,18 @@ app.get('/', (_req, res) => res.json({
 }));
 
 app.use('/api/plans', plansRouter);
-app.use('/api/bookings', bookingsRouter);
+// app.use('/api/bookings', bookingsRouter);
 app.use('/api/portal', portalRouter);
-app.use('/api/users', usersRouter);
+// app.use('/api/users', usersRouter);
+app.use('/api/business-client', businessClientRouter);
+app.use('/api/providers', providerRouter);
+app.use('/api/service-category', serviceCategoryRouter);
+app.use('/api/zip-whitelist', zipListRouter);
+// app.use('/api/booking');
+// app.use('/api/bookimg-details');
 
-// app.listen(Number(env.PORT), () => {
-//     logger.info(`Server running on :${env.PORT}`);
-//     startCronJobs();
-// });
 
 app.listen(Number(env.PORT), '0.0.0.0', () => {
   logger.info(`Server running on :${env.PORT}`);
-  startCronJobs();
+//   startCronJobs();
 });

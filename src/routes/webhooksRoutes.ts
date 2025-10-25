@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type Stripe from 'stripe';
 import { stripe } from '../services/stripe.js';
 import { env } from '../env.js';
-import { markScheduled } from '../repositories/bookinRepo.js';
+// import { markScheduled } from '../repositories/bookinRepo.js';
 // import { sendEmail } from '../services/notifications.js';
 
 
@@ -27,10 +27,10 @@ webhooksRouter.post('/stripe', (req, res) => {
                 const session = event.data.object as any;
                 const bookingId = session.metadata?.booking_id;
                 // const customer = session.customer as string;
-                const subscription = session.subscription as string;
-                if (bookingId) {
-                    await markScheduled(bookingId, subscription);
-                }
+                // const subscription = session.subscription as string;
+                // if (bookingId) {
+                //     await markScheduled(bookingId, subscription);
+                // }
                 break;
             }
             // outros eventos se necessário

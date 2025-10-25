@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { env } from '../env.js';
-import type { BookingInput, PlanKey } from '../types/booking.js';
+import type { BookingInput, PlanKey } from '../interfaces/booking.js';
 
 export const stripe = env.STRIPE_SECRET
     ? new Stripe(env.STRIPE_SECRET, { apiVersion: '2024-06-20' as any })

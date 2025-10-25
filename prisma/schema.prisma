@@ -7,68 +7,241 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id               String   @id @default(cuid())
-  name             String
-  email            String   @unique
-  password         String   @unique
-  phone            String
-  address          String
-  zip              String
-  userType         UserType @default(CLIENT)
-  stripeCustomerId String?  @unique
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  bookings Booking[]
+// ---------- ENUMS ----------
+enum AccountType {
+  INDIVIDUAL // App Piump (usuário comum - B2C)
+  BUSINESS_CLIENT // App Piump (empresa que compra serviços - B2B Buyer)
+  // PROVIDER // App Piump Freelancer (empresa/freelancer que presta serviços)
+  // BUSINESS_PROVIDER // App Piump Empresa ( empresa que presta serviço )
+  // EMPLOYEE
 }
 
-enum UserType {
-  ADMIN
-  CLIENT
+enum EmployeeRole {
+  OWNER   // dono/sócio
+  // ADMIN   // gerência
+  STAFF   // operacional
 }
 
-model Booking {
-  id                   String   @id @default(cuid())
-  bookingCode          String   @unique
-  userId               String
-  user                 User     @relation(fields: [userId], references: [id])
-  bins                 Int
-  plan                 Plan
-  ampm                 AMPM
-  sameDay              Boolean  @default(false)
-  assignedDate         DateTime
-  status               BookingStatus @default(PENDING)
-  stripeSubscriptionId String?  @unique
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  @@index([assignedDate, status])
-  @@index([userId])
+enum AMPM {
+  AM
+  PM
 }
 
-model ZipWhitelist {
-  zip       String  @id
-  city      String?
-  state     String?
-  active    Boolean @default(true)
-  createdAt DateTime @default(now())
+enum ServiceStatus {
+  PENDING
+  SCHEDULED
+  CANCELED
+  DONE
 }
 
-enum Plan { 
-  clean 
-  family 
-  fresh 
+enum Plan {
+  clean
+  family
+  fresh
   custom
 }
 
-enum AMPM { 
-  AM 
-  PM 
+// ---------- TABELAS CENTRAIS ----------
+model User {
+  id               String      @id @default(cuid())
+  name             String
+  email            String      @unique
+  password         String
+  phone            String
+  accountType      AccountType @default(INDIVIDUAL) // novo — define o “tipo de conta” no ecossistema
+  isAdmin          Boolean     @default(false)
+  stripeCustomerId String?     @unique
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  // Perfis opcionais por tipo de conta
+  businessClientProfile BusinessClientProfile?
+
+  // Reservas feitas por este usuário (INDIVIDUAL ou BUSINESS_CLIENT)
+  servicesRequested Service[] @relation("UserServices")
+
+  //  1 usuário pode ser um empregado no app "Provider"
+  Employee Employee[]
+
+  Address Address[]
 }
 
-enum BookingStatus { 
-  PENDING 
-  SCHEDULED 
-  CANCELED 
+// Empresas compradoras (B2B Buyer) — perfil opcional do User
+model BusinessClientProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  businessName     String
+  ein              String? // CNPJ/EIN opcional
+  businessCategory String? // ex.: construção, logística...
+  // Necessidades de serviço (multi-select)
+  serviceNeeds     ServiceCategory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Address Address[]
+}
+
+model Provider {
+  id                   String   @id @default(cuid())
+  email                String   @unique
+  password             String
+  phone                String
+
+  // Caso queira diferenciar empresa x freelancer
+  isCompany            Boolean  @default(false)
+
+  companyName          String
+  registrationNumber   String?     // CNPJ/inscrição
+  approved             Boolean  @default(false)
+
+  operatesAM           Boolean  @default(true)
+  operatesPM           Boolean  @default(true)
+
+  // Relações existentes (exemplos)
+  categoriesOffered    ServiceCategory[]
+  // serviceZones         ZipWhitelist[]
+  verificationDocs     VerificationDocument[]
+
+  // NOVO: relação 1→N com Employee
+  employees            Employee[]
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  Service Service[]
+  Address Address[]
+  ZipWhitelist ZipWhitelist[]
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  line1     String
+  city      String
+  state     String
+  zip       String
+  country   String   @default("US")
+
+  lat       Float?
+  lng       Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]                 // 1:1 prático via FK do lado do dono
+  providers  Provider[]
+  clients    BusinessClientProfile[]
+}
+
+// Empregados vinculados a um Provider (empresa)
+model Employee {
+  id          String   @id @default(cuid())
+
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  name        String
+  email       String
+  phone       String?
+  role        EmployeeRole @default(STAFF)
+  active      Boolean  @default(true)
+
+  // Se o funcionário tiver login próprio no seu sistema, pode referenciar User aqui:
+  userId   String?  @unique
+  user     User?    @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Evita colisão de e-mails dentro do mesmo Provider (pode repetir em outro Provider)
+  @@unique([providerId, email])
+  @@index([providerId])
+}
+
+// Categorias de serviço (cleaning, towing, rentals, etc.)
+model ServiceCategory {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
+
+  // m:n com Provider e com BusinessClientProfile
+  providers   Provider[] // oq o provedor (pessoa ou empresa) oferece de serviço
+  clientNeeds BusinessClientProfile[] // oq o cliente (pessoa ou empresa) necessita de serviço
+  // vínculo com Booking
+  bookings    Service[] // oq foi pedido em uma reserva
+}
+
+// Documentos de verificação do Provider
+model VerificationDocument {
+  id         String   @id @default(cuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+
+  url        String
+  status     String   @default("PENDING") // PENDING | APPROVED | REJECTED (string simples)
+  uploadedAt DateTime @default(now())
+}
+
+// Lista de CEPs ( zonas de atendimento )
+model ZipWhitelist {
+  zip       String   @id
+  city      String?
+  state     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // m:n com Provider (zonas de atendimento)
+  providers Provider[]
+}
+
+// ---------- SERVICE (GENÉRICO) ----------
+model Service {
+  id          String @id @default(cuid())
+  bookingCode String @unique
+
+  // Quem pediu (User INDIVIDUAL ou BUSINESS_CLIENT) - que não seja provider
+  requesterId String
+  requester   User   @relation("UserServices", fields: [requesterId], references: [id])
+
+  // Para qual Provider (preenchido quando for atribuído)
+  providerId String?
+  provider   Provider? @relation(fields: [providerId], references: [id])
+
+  // Serviço e localização para matching
+  categoryId Int
+  category   ServiceCategory @relation(fields: [categoryId], references: [id])
+  serviceZip String? // CEP do serviço solicitado
+
+  // Janela e agendamento
+  ampm         AMPM
+  sameDay      Boolean       @default(false)
+  assignedDate DateTime? // vira obrigatória após SCHEDULED
+  status       ServiceStatus @default(PENDING)
+
+  // Stripe
+  stripePaymentIntentId String? @unique
+  stripeSubscriptionId  String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Detalhes específicos de “Trash Bin Cleaning” (opcional)
+  binCleaningDetails ServiceDetails?
+
+  @@index([categoryId, serviceZip, status])
+  @@index([assignedDate, status])
+  @@index([requesterId])
+  @@index([providerId])
+}
+
+// Detalhes específicos do produto “Trash Bin Cleaning”
+model ServiceDetails {
+  serviceId String  @id @map("serviceId")
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  bins        Int?
+  plan        Plan?
+  description String?
 }

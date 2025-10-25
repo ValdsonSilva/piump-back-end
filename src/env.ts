@@ -11,7 +11,7 @@ const envSchema = z.object({
     FRONTEND_URL: z.string().optional(),
     ADMIN_BASIC_USER: z.string().optional(),
     ADMIN_BASIC_PASS: z.string().optional(),
-    ALLOWED_ZIPS: z.string().optional().default(''),
+    ALLOWED_ZIPS: z.array(z.string()).default(['43201', '44114', '45202']),
     JWT_SECRET: z.string().default('dev-secret-change-me'),
     JWT_EXPIRES_IN: z.union([z.string().min(1), z.coerce.number()]).default("7d"),
 
@@ -51,4 +51,4 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
-export const ALLOWED_ZIPS = env.ALLOWED_ZIPS.split(',').map(s => s.trim()).filter(Boolean);
+export const ALLOWED_ZIPS = env.ALLOWED_ZIPS.map(s => s.trim()).filter(Boolean);

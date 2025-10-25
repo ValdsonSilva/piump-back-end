@@ -1,60 +1,127 @@
-import { Request, Response, Router } from 'express';
-import { bookingSchema } from '../lib/validation.js';
-import { ALLOWED_ZIPS } from '../env.js';
-import { buildBookingRow } from '../services/bookingService.js';
-import { createBookingDB, listAllBookings } from '../repositories/bookinRepo.js';
-import { requireAuth } from '../middleware/auth.js';
-import { findByUserId } from '../repositories/userRepo.js';
+import express from 'express';
+import {
+  createBooking,
+  getAllBookings,
+  getBookingById,
+  updateBooking,
+  deleteBooking,
+  getBookingsByStatus,
+  getBookingsByRequesterId,
+  // getBookingsByProviderId,
+} from '../repositories/bookinRepo.js'; // Importando o repositório
+import { BookingStatus } from '@prisma/client';
 
+const router = express.Router();
 
-export const bookingsRouter = Router();
+// Rota para criar um novo Booking
+router.post('/', async (req, res) => {
+  const { bookingCode, requesterId, categoryId, serviceZip, ampm, sameDay, status, assignedDate, providerId } = req.body;
 
+  if (!bookingCode || !requesterId || !categoryId || !serviceZip || !ampm || !status) {
+    return res.status(400).json({ error: "Campos obrigatórios ausentes: bookingCode, requesterId, categoryId, serviceZip, ampm, status." });
+  }
 
-bookingsRouter.post('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const parsed = bookingSchema.parse(req.body);
-
-
-    if (!ALLOWED_ZIPS.includes(parsed.zip)) {
-      return res.status(400).json({ message: 'Coming soon to your area.' });
-    }
-
-    const isUserExist = await findByUserId(parsed.userId);
-
-    if (!isUserExist) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const row = buildBookingRow(parsed);
-
-    // Grava no Postgres a reserva
-    const booking = await createBookingDB(row.bookingId, parsed, row.assignedDate);
-
-    // Checkout Stripe
-    // const session = await createCheckoutSession(row.bookingId, parsed, row.assignedDate);
-
-    const after11 = new Date().getHours() >= 11;
-    const msg = after11 ? 'Booked after 11:00 — service will be assigned to the next day.' : 'Service planned for today.';
-
-    return res.json({
-      booking,
-      // checkoutUrl: session?.url,
-      message: parsed.sameDay ? 'Same-day service subject to availability. ' + msg : msg
-    });
-
-  } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+    const newBooking = await createBooking(bookingCode, requesterId, categoryId, serviceZip, ampm, sameDay, status, assignedDate, providerId);
+    return res.status(201).json(newBooking);
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
   }
 });
 
-bookingsRouter.get('/', async (req: Request, res: Response) => {
+// Rota para buscar todos os Bookings
+router.get('/', async (req, res) => {
   try {
-    const bookings = await listAllBookings();
-
-    if (!bookings) return res.status(400).json({ message: "Bookings not found." });
-
-    return res.json(bookings);
-  } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+    const bookings = await getAllBookings();
+    return res.status(200).json(bookings);
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
   }
-})
+});
+
+// Rota para buscar um Booking por ID
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const booking = await getBookingById(id);
+    if (!booking) {
+      return res.status(404).json({ error: "Booking não encontrado." });
+    }
+    return res.status(200).json(booking);
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Rota para atualizar um Booking
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { providerId, assignedDate, status } = req.body;
+
+  try {
+    const updatedBooking = await updateBooking(id, providerId, assignedDate, status);
+    if (!updatedBooking) {
+      return res.status(404).json({ error: "Booking não encontrado." });
+    }
+    return res.status(200).json(updatedBooking);
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Rota para excluir um Booking
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const deletedBooking = await deleteBooking(id);
+    if (!deletedBooking) {
+      return res.status(404).json({ error: "Booking não encontrado." });
+    }
+    return res.status(200).json({ message: "Booking excluído com sucesso." });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Rota para buscar Bookings por status
+router.get('/status/:status', async (req, res) => {
+  const { status } = req.params;
+
+  try {
+    if (status in BookingStatus) {
+      const bookings = await getBookingsByStatus(status as BookingStatus);
+      return res.status(200).json(bookings);
+    }
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Rota para buscar Bookings do requester
+router.get('/requester/:requesterId', async (req, res) => {
+  const { requesterId } = req.params;
+
+  try {
+    const bookings = await getBookingsByRequesterId(requesterId);
+    return res.status(200).json(bookings);
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Rota para buscar Bookings do provider
+// router.get('/provider/:providerId', async (req, res) => {
+//   const { providerId } = req.params;
+
+//   try {
+      // 
+//     const bookings = await getBookingsByProviderId(providerId);
+//     return res.status(200).json(bookings);
+//   } catch (error: any) {
+//     return res.status(500).json({ error: error.message });
+//   }
+// });
+
+export default router;
