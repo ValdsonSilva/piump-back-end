@@ -7,19 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ---------- ENUMS ----------
+// ---------- ENUMS ---------- 
 enum AccountType {
-  INDIVIDUAL // App Piump (usuário comum - B2C)
-  BUSINESS_CLIENT // App Piump (empresa que compra serviços - B2B Buyer)
-  // PROVIDER // App Piump Freelancer (empresa/freelancer que presta serviços)
-  // BUSINESS_PROVIDER // App Piump Empresa ( empresa que presta serviço )
-  // EMPLOYEE
+  INDIVIDUAL
+  BUSINESS_CLIENT
 }
 
 enum EmployeeRole {
-  OWNER   // dono/sócio
-  // ADMIN   // gerência
-  STAFF   // operacional
+  OWNER
+  STAFF
 }
 
 enum AMPM {
@@ -41,41 +37,43 @@ enum Plan {
   custom
 }
 
-// ---------- TABELAS CENTRAIS ----------
+enum ConversationRole {
+  MEMBER
+  ADMIN
+}
+
+// ---------- TABELAS CENTRAIS ---------- 
 model User {
   id               String      @id @default(cuid())
   name             String
   email            String      @unique
   password         String
   phone            String
-  accountType      AccountType @default(INDIVIDUAL) // novo — define o “tipo de conta” no ecossistema
+  accountType      AccountType @default(INDIVIDUAL)
   isAdmin          Boolean     @default(false)
   stripeCustomerId String?     @unique
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
-  // Perfis opcionais por tipo de conta
-  businessClientProfile BusinessClientProfile?
+  businessClientProfile   BusinessClientProfile?
+  servicesRequested       Service[]                 @relation("UserServices")
+  Employee                Employee[]
+  Address                 Address[]
+  ConversationParticipant ConversationParticipant[]
 
-  // Reservas feitas por este usuário (INDIVIDUAL ou BUSINESS_CLIENT)
-  servicesRequested Service[] @relation("UserServices")
-
-  //  1 usuário pode ser um empregado no app "Provider"
-  Employee Employee[]
-
-  Address Address[]
+  Message            Message[]
+  MessageReadReceipt MessageReadReceipt[]
 }
 
-// Empresas compradoras (B2B Buyer) — perfil opcional do User
+// Empresas compradoras (B2B Buyer)
 model BusinessClientProfile {
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
 
   businessName     String
-  ein              String? // CNPJ/EIN opcional
-  businessCategory String? // ex.: construção, logística...
-  // Necessidades de serviço (multi-select)
+  ein              String?
+  businessCategory String?
   serviceNeeds     ServiceCategory[]
 
   createdAt DateTime @default(now())
@@ -85,35 +83,26 @@ model BusinessClientProfile {
 }
 
 model Provider {
-  id                   String   @id @default(cuid())
-  email                String   @unique
-  password             String
-  phone                String
+  id                 String            @id @default(cuid())
+  email              String            @unique
+  password           String
+  phone              String
+  isCompany          Boolean           @default(false)
+  companyName        String
+  registrationNumber String?
+  approved           Boolean           @default(false)
+  operatesAM         Boolean           @default(true)
+  operatesPM         Boolean           @default(true)
+  categoriesOffered  ServiceCategory[]
+  employees          Employee[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
-  // Caso queira diferenciar empresa x freelancer
-  isCompany            Boolean  @default(false)
-
-  companyName          String
-  registrationNumber   String?     // CNPJ/inscrição
-  approved             Boolean  @default(false)
-
-  operatesAM           Boolean  @default(true)
-  operatesPM           Boolean  @default(true)
-
-  // Relações existentes (exemplos)
-  categoriesOffered    ServiceCategory[]
-  // serviceZones         ZipWhitelist[]
-  verificationDocs     VerificationDocument[]
-
-  // NOVO: relação 1→N com Employee
-  employees            Employee[]
-
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  Service Service[]
-  Address Address[]
+  Service      Service[]
+  Address      Address[]
   ZipWhitelist ZipWhitelist[]
+
+  VerificationDocument VerificationDocument[]
 }
 
 model Address {
@@ -123,68 +112,52 @@ model Address {
   state     String
   zip       String
   country   String   @default("US")
-
   lat       Float?
   lng       Float?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users      User[]                 // 1:1 prático via FK do lado do dono
-  providers  Provider[]
-  clients    BusinessClientProfile[]
+  users     User[]
+  providers Provider[]
+  clients   BusinessClientProfile[]
 }
 
-// Empregados vinculados a um Provider (empresa)
 model Employee {
-  id          String   @id @default(cuid())
+  id         String       @id @default(cuid())
+  providerId String
+  provider   Provider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  name       String
+  email      String
+  phone      String?
+  role       EmployeeRole @default(STAFF)
+  active     Boolean      @default(true)
+  userId     String?      @unique
+  user       User?        @relation(fields: [userId], references: [id])
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
-  providerId  String
-  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-
-  name        String
-  email       String
-  phone       String?
-  role        EmployeeRole @default(STAFF)
-  active      Boolean  @default(true)
-
-  // Se o funcionário tiver login próprio no seu sistema, pode referenciar User aqui:
-  userId   String?  @unique
-  user     User?    @relation(fields: [userId], references: [id])
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Evita colisão de e-mails dentro do mesmo Provider (pode repetir em outro Provider)
   @@unique([providerId, email])
   @@index([providerId])
 }
 
-// Categorias de serviço (cleaning, towing, rentals, etc.)
 model ServiceCategory {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-  slug String @unique
-
-  // m:n com Provider e com BusinessClientProfile
-  providers   Provider[] // oq o provedor (pessoa ou empresa) oferece de serviço
-  clientNeeds BusinessClientProfile[] // oq o cliente (pessoa ou empresa) necessita de serviço
-  // vínculo com Booking
-  bookings    Service[] // oq foi pedido em uma reserva
+  id          Int                     @id @default(autoincrement())
+  name        String                  @unique
+  slug        String                  @unique
+  providers   Provider[]
+  clientNeeds BusinessClientProfile[]
+  bookings    Service[]
 }
 
-// Documentos de verificação do Provider
 model VerificationDocument {
   id         String   @id @default(cuid())
   providerId String
   provider   Provider @relation(fields: [providerId], references: [id])
-
   url        String
-  status     String   @default("PENDING") // PENDING | APPROVED | REJECTED (string simples)
+  status     String   @default("PENDING")
   uploadedAt DateTime @default(now())
 }
 
-// Lista de CEPs ( zonas de atendimento )
 model ZipWhitelist {
   zip       String   @id
   city      String?
@@ -192,43 +165,29 @@ model ZipWhitelist {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  // m:n com Provider (zonas de atendimento)
   providers Provider[]
 }
 
-// ---------- SERVICE (GENÉRICO) ----------
 model Service {
-  id          String @id @default(cuid())
-  bookingCode String @unique
-
-  // Quem pediu (User INDIVIDUAL ou BUSINESS_CLIENT) - que não seja provider
-  requesterId String
-  requester   User   @relation("UserServices", fields: [requesterId], references: [id])
-
-  // Para qual Provider (preenchido quando for atribuído)
-  providerId String?
-  provider   Provider? @relation(fields: [providerId], references: [id])
-
-  // Serviço e localização para matching
-  categoryId Int
-  category   ServiceCategory @relation(fields: [categoryId], references: [id])
-  serviceZip String? // CEP do serviço solicitado
-
-  // Janela e agendamento
-  ampm         AMPM
-  sameDay      Boolean       @default(false)
-  assignedDate DateTime? // vira obrigatória após SCHEDULED
-  status       ServiceStatus @default(PENDING)
-
-  // Stripe
-  stripePaymentIntentId String? @unique
-  stripeSubscriptionId  String? @unique
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Detalhes específicos de “Trash Bin Cleaning” (opcional)
-  binCleaningDetails ServiceDetails?
+  id                    String          @id @default(cuid())
+  bookingCode           String          @unique
+  requesterId           String
+  requester             User            @relation("UserServices", fields: [requesterId], references: [id])
+  providerId            String?
+  provider              Provider?       @relation(fields: [providerId], references: [id])
+  categoryId            Int
+  category              ServiceCategory @relation(fields: [categoryId], references: [id])
+  serviceZip            String?
+  ampm                  AMPM
+  sameDay               Boolean         @default(false)
+  assignedDate          DateTime?
+  status                ServiceStatus   @default(PENDING)
+  stripePaymentIntentId String?         @unique
+  stripeSubscriptionId  String?         @unique
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  binCleaningDetails    ServiceDetails?
+  Conversation          Conversation[]
 
   @@index([categoryId, serviceZip, status])
   @@index([assignedDate, status])
@@ -236,12 +195,92 @@ model Service {
   @@index([providerId])
 }
 
-// Detalhes específicos do produto “Trash Bin Cleaning”
 model ServiceDetails {
-  serviceId String  @id @map("serviceId")
-  service   Service @relation(fields: [serviceId], references: [id])
-
+  serviceId   String  @id @map("serviceId")
+  service     Service @relation(fields: [serviceId], references: [id])
   bins        Int?
   plan        Plan?
   description String?
+}
+
+model Conversation {
+  id               String                    @id @default(cuid())
+  serviceId        String?                   @unique
+  service          Service?                  @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  createdAt        DateTime                  @default(now())
+  participants     ConversationParticipant[]
+  messages         Message[]
+  ConversationMeta ConversationMeta?
+
+  @@index([createdAt])
+}
+
+model ConversationParticipant {
+  id             String           @id @default(cuid())
+  conversationId String
+  userId         String
+  role           ConversationRole @default(MEMBER)
+  createdAt      DateTime         @default(now())
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId, createdAt])
+}
+
+model Message {
+  id                 String               @id @default(cuid())
+  conversationId     String
+  senderId           String
+  content            String
+  createdAt          DateTime             @default(now())
+  conversation       Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender             User                 @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  MessageReadReceipt MessageReadReceipt[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+  @@index([conversationId, id]) // novo
+}
+
+// ---------- OUTBOX & CHAT EXTRAS ----------
+model OutboxEvent {
+  id             String    @id @default(cuid())
+  topic          String    // nome do evento
+  payload        Json      // dados passados no evento
+  // para idempotência de produtores (clients web/mobile), opcional:
+  idempotencyKey String?   @unique
+  // para orquestração/retentativas:
+  status         String    @default("PENDING") // PENDING|SENT|FAILED
+  attempts       Int       @default(0) // em erro soma-se +1 em tentativas
+  error          String?
+  createdAt      DateTime  @default(now())
+  availableAt    DateTime  @default(now()) // para backoff/retentativa
+  sentAt         DateTime?
+
+  @@index([status, availableAt])
+}
+
+// confirmações de leitura (opcional, mas recomendado)
+model MessageReadReceipt {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId, readAt])
+}
+
+// qualidade de vida p/ lista de conversas (opcional)
+model ConversationMeta {
+  conversationId String       @id
+  lastMessageAt  DateTime
+  lastMessageId  String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([lastMessageAt])
 }

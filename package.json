@@ -10,11 +10,15 @@
         "migrate": "prisma migrate deploy"
     },
     "dependencies": {
+        "@fastify/cors": "^11.1.0",
+        "@fastify/jwt": "^10.0.0",
         "@prisma/client": "^5.20.0",
+        "@types/socket.io": "^3.0.2",
         "bcryptjs": "^3.0.2",
         "cors": "^2.8.5",
         "dotenv": "^16.4.5",
         "express": "^4.19.2",
+        "fastify": "^5.6.1",
         "helmet": "^7.0.0",
         "jsonwebtoken": "^9.0.2",
         "luxon": "^3.5.0",
@@ -22,6 +26,7 @@
         "nodemailer": "^7.0.6",
         "pino": "^9.0.0",
         "pino-http": "^10.0.0",
+        "redis": "^5.9.0",
         "stripe": "^16.0.0",
         "twilio": "^5.2.0",
         "uuid": "^9.0.1",
